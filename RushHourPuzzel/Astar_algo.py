@@ -3,19 +3,31 @@ from Node import Node
 from game import RushHourPuzzle
 
 
-#il calcule combien de voiture est entre la voiture X et la distance X et la sortie 
-def h(s):
-    x = s.vagent["x"]#0
-    y = s.vagent["y"]#2
-    length = s.vagent["length"]#2
-    voiture_x = x + length -1 #0+2-1=1 
+#il calcule le nombre de voiture qui sont entre la voiture X et la sortie,et la distance X et la sortie 
+def h(s,parent_state=None):
+    x = s.vagent["x"]
+    y = s.vagent["y"]
+    length = s.vagent["length"]
+    voiture_x = x + length - 1
 
-    heuristic = s.board_width-voiture_x -1#6-1-1=4
-    
-    for j in range(voiture_x+1, s.board_width-1):
-        if s.board[y][j] != "." and s.board[y][j-1]!=s.board[y][j]:
-            heuristic += 1
+    # H1
+    distance_sortie = s.board_width - voiture_x - 1
 
+    # H2
+    voitures_blk = 0
+    for j in range(voiture_x + 1, s.board_width):
+        if s.board[y][j] != ".":
+            voitures_blk += 1
+
+    # H3:si la voiture X revient en arriere on ajoute un panlite
+    H3 = 0
+    if parent_state is not None:
+        x_parent = parent_state.vagent["x"]
+        if x < x_parent:  # X recule (se déplace vers la gauche)
+            H3 = x_parent - x # Pénalité proportionnelle à la distance reculée
+
+    # Heuristique : distance + voitures bloquantes + pénalité
+    heuristic = distance_sortie+voitures_blk + H3
 
     return heuristic
 
@@ -26,7 +38,7 @@ def min_list(Open):
 
     for i in range(1, len(Open)):
         if Open[i].f < min_f:
-            min_f = Open[i].f
+            min_f = Open[i].f 
             pos_min = i
 
     return pos_min
@@ -38,7 +50,7 @@ def A(s, successorsFn, isGoal):
     Closed = []     # list
 
     init_node = Node(s, None, None)  # Node(state, parentNode, action ,g,f)
-    init_node.setF(h)
+    init_node.setF(lambda state: h(state))
     
     if isGoal(init_node.state):
         return init_node
@@ -58,7 +70,7 @@ def A(s, successorsFn, isGoal):
         for action, successor in successorsFn(current.state):
             g=current.g+1
             child = Node(successor, current, action,g)  # Create a new node and link to its parent
-            child.setF(h)
+            child.setF(lambda state: h(state, current.state))
             
 
             in_closed = any(child.state.equals(node.state) for node in Closed)

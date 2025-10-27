@@ -4,12 +4,12 @@ import os
 from copy import deepcopy
 from game import RushHourPuzzle
 from algoBFS import BFS
-
+from Astar_algo import A
 # ===================== CONFIG =====================
 WINDOW_WIDTH, WINDOW_HEIGHT = 1000, 700
 CELL_SIZE = 80
 STEP_DELAY = 250  # ms
-MARGIN_TOP = 150
+MARGIN_TOP = 100
 
 pygame.init()
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -18,7 +18,7 @@ clock = pygame.time.Clock()
 
 # ===================== COULEURS =====================
 GRID_BG = (45, 25, 75)
-WALL_COLOR = (100, 120, 150)
+WALL_COLOR = (0, 0, 0)
 CAR_COLORS_UNIQUES = [
     (255, 128, 0), (0, 128, 255), (255, 105, 180), (144, 238, 144),
     (216, 191, 216), (175, 238, 238), (255, 250, 205), (255, 165, 0),
@@ -47,9 +47,9 @@ def load_img(path, size=None):
         print(f"Image non trouvée: {path} ({e})")
         return pygame.Surface(size if size else (50,50))
 
-door_img = load_img("assets/door.png", (120, 180))
-home_icon_img = load_img("assets/entree.png", (50, 50))
-replay_icon_img = load_img("assets/repeter.png", (50, 50))
+door_img = load_img("./assets/door.png", (120, 180))
+home_icon_img = load_img("./assets/entree.png", (50, 50))
+replay_icon_img = load_img("./assets/repeter.png", (50, 50))
 
 # ===================== FONCTIONS =====================
 def draw_board(puzzle, step=None, total=None, no_solution=False):
@@ -137,23 +137,28 @@ def draw_menu(levels, hover_index, clicked_index=-1):
 def draw_algo_menu(selected=None, show_astar_msg=False):
     screen.fill(GRID_BG)
     txt = TITLE_FONT.render("Choisissez l'algorithme", True, (255, 215, 0))
+
     screen.blit(txt, (WINDOW_WIDTH//2 - txt.get_width()//2, 120))
+
     bfs_rect = pygame.Rect(WINDOW_WIDTH//2-200, 270, 180, 80)
     astar_rect = pygame.Rect(WINDOW_WIDTH//2+20, 270, 180, 80)
+
     pygame.draw.rect(screen, (60,180,80) if selected==0 else (100,100,100), bfs_rect, border_radius=15)
     pygame.draw.rect(screen, (80,80,180) if selected==1 else (100,100,100), astar_rect, border_radius=15)
+
     bfs_txt = MENU_FONT.render("BFS", True, (255,255,255))
     astar_txt = MENU_FONT.render("A*", True, (255,255,255))
+
     screen.blit(bfs_txt, (bfs_rect.x + 60, bfs_rect.y + 25))
     screen.blit(astar_txt, (astar_rect.x + 60, astar_rect.y + 25))
-    if show_astar_msg:
+    """if show_astar_msg:
         warn = MENU_FONT.render("Méthode A* pas encore ajoutée", True, (255,0,0))
-        screen.blit(warn, (WINDOW_WIDTH//2 - warn.get_width()//2, 400))
+        screen.blit(warn, (WINDOW_WIDTH//2 - warn.get_width()//2, 400))"""
     return bfs_rect, astar_rect
 
 # ===================== MAIN =====================
 def main():
-    csv_dir = "../csv"
+    csv_dir = "./csv"
     levels = sorted([f for f in os.listdir(csv_dir) if f.endswith(".csv")])
 
     running = True
@@ -228,7 +233,20 @@ def main():
                     last_step_time = pygame.time.get_ticks()
                 elif algo_choice == 1:
                     # A* pas encore demander 
-                    show_astar_msg = True
+                    level_file = os.path.join(csv_dir, levels[clicked_index])
+                    puzzle = RushHourPuzzle()
+                    puzzle.setVehicles(level_file)
+                    puzzle.setBoard()
+                    solution_node = A(
+                        puzzle,
+                        lambda state: state.successorFunction(),
+                        lambda state: state.isGoal()
+                    )
+                    solution = solution_node.getSolution() if solution_node else []
+                    step = 0
+                    no_solution = not solution
+                    in_algo_menu = False
+                    last_step_time = pygame.time.get_ticks()
 
             if event.type == pygame.MOUSEBUTTONDOWN and not in_menu and not in_algo_menu and puzzle:
                 board_bottom_y = MARGIN_TOP + puzzle.board_height*CELL_SIZE
